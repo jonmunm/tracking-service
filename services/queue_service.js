@@ -1,31 +1,39 @@
-const { EventHubProducerClient } = require("@azure/event-hubs");
-const connectionString = "Endpoint=sb://ehtracking.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=W01ObgobV3BA9aKSQ2UVW4dZIQAHaNo17+AEhAnKX7Y=";
-const eventHubName = "refunds"
+const axios = require('axios');
+const crypto = require('crypto');
 
-const send_track = async (track) => {
-  // Create a producer client to send messages to the event hub.
-  const producer = new EventHubProducerClient(connectionString, eventHubName);
+// Also known as topic
+const eventHubName = "refunds";
+const eventHubNameSpace = "ehtracking"
+const baseEventHubUri = `https://${eventHubNameSpace}.servicebus.windows.net/${eventHubName}`
+const simpleMessageEndpoint = `${baseEventHubUri}/messages?timeout=60&api-version=2014-01`
+const saName = "SendKey";
+const saKey = "MJUTCSDNmebgqQQjuV0FS7bvl7VDlE6g4+AEhM8EfLQ="
 
-  // Prepare a batch one events.
-  let batch = await producer.createBatch();
+function createSharedAccessToken(uri, saName, saKey) { 
+  if (!uri || !saName || !saKey) { 
+    throw "Missing required parameter"; 
+  } 
+  var encoded = encodeURIComponent(uri); 
+  var now = new Date(); 
+  var week = 60*60*24*7;
+  var ttl = Math.round(now.getTime() / 1000) + week;
+  var signature = encoded + '\n' + ttl; 
+  var hash = crypto.createHmac('sha256', saKey).update(signature, 'utf8').digest('base64'); 
+  return 'SharedAccessSignature sr=' + encoded + '&sig=' + encodeURIComponent(hash) + '&se=' + ttl + '&skn=' + saName; 
+}
 
-  const added = batch.tryAdd({ body: track });  
-  if ( !added) {
-    throw new Error("The message was not added to the batch")
-  }
-  console.log(`Added event to the batch`);
+const sas = createSharedAccessToken(baseEventHubUri, saName, saKey);
 
-  // Send the batch to the event hub.
-  await producer.sendBatch(batch);
-  console.log(`Sent ${batch.count} messages`);
+const send_track = async (track) => { 
+    const response = await axios.post(simpleMessageEndpoint, track, { "headers" : { "Authorization" : sas, "Content-Type" : "application/atom+xml;type=entry;charset=utf-8" } });
 
-  if (batch.count > 0) {
-    console.log(`Sending remaining ${batch.count} messages as a single batch.`);
-    await producer.sendBatch(batch);
-  }
+    if (response.status === 401) {
+        throw new Error("Authorization failure");
+    }
 
-  // Close the producer client.
-  await producer.close();  
+    if (response.status === 500) {
+        throw new Error(response);
+    }   
 }
 
 module.exports = {
