@@ -1,8 +1,12 @@
 const router = require('express').Router()
 const QueueService = require('../services/queue_service');
+const TrackModel = require('../business/tracks');
 
 router.post('', async (req, res) => {
-  const { body: track } = req
+  let { body: track } = req;
+
+  // Fill server_timestamp and message_id
+  track = TrackModel.process_track(track);
 
   try {
     await QueueService.send_track(track);
@@ -10,7 +14,6 @@ router.post('', async (req, res) => {
     res.status(500).send(ex);
   }
 
-  //console.log(track);
   res.status(201).send()
 });
 
