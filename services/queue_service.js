@@ -2,12 +2,12 @@ const axios = require('axios');
 const crypto = require('crypto');
 
 // Also known as topic
-const eventHubName = "refunds";
-const eventHubNameSpace = "ehtracking"
+const eventHubName = "tracks";
+const eventHubNameSpace = "eh-tracks"
 const baseEventHubUri = `https://${eventHubNameSpace}.servicebus.windows.net/${eventHubName}`
 const simpleMessageEndpoint = `${baseEventHubUri}/messages?timeout=60&api-version=2014-01`
 const saName = "SendKey";
-const saKey = "MJUTCSDNmebgqQQjuV0FS7bvl7VDlE6g4+AEhM8EfLQ="
+const saKey = "rZAHfWkrxMnkFv0HzKMGTxl63f2MXC1s2+AEhAhy74o="
 
 function createSharedAccessToken(uri, saName, saKey) { 
   if (!uri || !saName || !saKey) { 
